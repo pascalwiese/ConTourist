@@ -1,8 +1,10 @@
 import os
 import argparse
 
-import contourist.inout as inout  
-import contourist.contouring as ctr
+import numpy as np
+
+from contourist.inout import import_mesh_data
+from contourist.contouring import create_contour_polygons
 
 
 def main():
@@ -10,10 +12,13 @@ def main():
     path_dict, params = parse_args()
 
     # Reading mesh and data
-    nodes, elements = inout.import_data(path_dict['mesh'], path_dict['dat'])
+    mesh = import_mesh_data(path_dict['mesh'], path_dict['dat'])
+
+    print(np.max(mesh.nodes, axis=0))
 
     # Creating contours for each element
-    element_contour_polygons = ctr.create_contour_polygons(nodes, elements)
+    element_contour_polygon_dict = create_contour_polygons(mesh, params,
+                                                           debug=True)
 
 
 def parse_args():
@@ -51,7 +56,7 @@ def parse_args():
     else:
         path_dat = os.path.join(folder, args['dat'])
 
-    contours = args['contours'].split(',')
+    contours = [float(x) for x in args['contours'].split(',')]
     do_plot = True if args['plot'].upper() in ["TRUE", "JA", "J", "Y"] \
         else False
     do_diss = True if args['diss'].upper() in ["TRUE", "JA", "J", "Y"] \
