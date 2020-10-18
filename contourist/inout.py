@@ -1,6 +1,7 @@
 import sys
 import time
 
+from tqdm import tqdm
 import numpy as np
 import shapefile
 
@@ -74,7 +75,7 @@ def import_2dm_dat(path_dat, nodes):
 def find_nodes_connected_elements(mesh):
     mesh.nodes_conn_element_ids = [[] for x in range(mesh.nodes.shape[0])]
 
-    for eid, nids in enumerate(mesh.elements):
+    for eid, nids in enumerate(tqdm(mesh.elements)):
         mesh.nodes_conn_element_ids[nids[0]].append(eid)
         mesh.nodes_conn_element_ids[nids[1]].append(eid)
         mesh.nodes_conn_element_ids[nids[2]].append(eid)
@@ -91,7 +92,7 @@ def find_nodes_connected_elements(mesh):
 def set_element_neighbour_ids(mesh):
     mesh.element_neigh_ids = [[] for x in range(mesh.elements.shape[0])]
 
-    for eid, nids in enumerate(mesh.elements):
+    for eid, nids in enumerate(tqdm(mesh.elements)):
         temp_element_neigh_ids = []
         for nid in nids:
             temp_element_neigh_ids += mesh.nodes_conn_element_ids[nid]
@@ -103,13 +104,22 @@ def set_element_neighbour_ids(mesh):
                 mesh.element_neigh_ids[eid].append(neid)
 
 
-def write_element_contour_polygons(contour_polygons, path_cpolys):
+def write_element_contour_polygons(contour_polygons_dict, path_cpolys):
     print("\nWriting each elements contour polygon to shapefile...")
     print(path_cpolys)
     w = shapefile.Writer(path_cpolys)
     w.field("ID", 'N')
+    w.field("Contour", 'C')
 
-    for i, cpoly in enumerate(contour_polygons):
-        w.poly([pnt for pnt in cpoly])
-        w.record(i)
+    for c_pair, contour_polygons in contour_polygons_dict.items():
+        for i, cpoly in enumerate(contour_polygons):
+            if len(cpoly) == 0:
+                continue
+            if len(cpoly) > 1:
+                pnts = [(x, y, z) for x, y, z in cpoly]
+                pnts.append(pnts[0])
+                w.polyz([pnts])
+                w.record(i, c_pair)
+            else:
+                print("Contour Polygon {} of element {} only has {} points".format(c_pair, i, len(cpoly)))
     w.close()
