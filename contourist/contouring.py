@@ -14,15 +14,16 @@ def create_contour_polygons(mesh, params, debug=False):
         print("- Starting with contour {} <= contour < {}...".format(c_lo,
                                                                      c_hi))
         contour_polygons = [[] for x in range(mesh.elements.shape[0])]
-       
+
+        # TODO: Put in several different functions
         for eid, nids in enumerate(tqdm(mesh.elements)):
             nodes = mesh.nodes[nids, :]
 
             # All z values are lower than the contour bounds
-            if np.sum(nodes[:, 2] < c_lo) == 3:
+            if np.sum(nodes[:, 2] <= c_lo) == 3:
                 continue
             # All z values are higher than the contour bounds
-            elif np.sum(nodes[:, 2] > c_hi) == 3:
+            elif np.sum(nodes[:, 2] >= c_hi) == 3:
                 continue
             # All z values are within the contour bounds
             elif np.sum(nodes[:, 2] >= c_lo) == 3 and \
@@ -36,7 +37,7 @@ def create_contour_polygons(mesh, params, debug=False):
                         continue
                     if nd1[2] < c_lo and nd2[2] < c_lo:
                         continue
-                    
+
                     # Checking which nodes' z value is higher
                     nd_lo = nd1
                     nd_hi = nd2
@@ -46,12 +47,11 @@ def create_contour_polygons(mesh, params, debug=False):
                         is_reverse = True
 
                     # Both nodes inside contour bounds.
-                    # => Trivial case
+                    # => Trivial case. Nodes will be added with previous or
+                    #    next edge.
                     if nd_lo[2] >= c_lo and nd_hi[2] <= c_hi:
-                        if is_reverse:
-                            contour_polygons[eid] += [nd2, nd1]
-                        else:
-                            contour_polygons[eid] += [nd1, nd2]
+                        continue
+
                     # Otherwise:
                     # => One or two intersections possible
                     else:
@@ -73,9 +73,9 @@ def create_contour_polygons(mesh, params, debug=False):
                             intersections.append(nd_hi)
 
                         if is_reverse:
-                            contour_polygons[eid] += intersections[::-1]
-                        else:
-                            contour_polygons[eid] += intersections
+                            intersections = intersections[::-1]
+
+                        contour_polygons[eid] += intersections
 
                 if debug:
                     print("\nElement index: {}".format(eid))

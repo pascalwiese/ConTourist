@@ -30,23 +30,26 @@ def import_mesh_data(path_mesh, path_dat):
 
     mesh = Mesh(nodes, elements)
 
-    print("- Finding each nodes connected elements...")
-    t0 = time.time()
-    find_nodes_connected_elements(mesh)
-    print("  - Finished after {:.2f} seconds.".format(time.time() - t0))
+    print("- SKIPPING steps, which are necessary for dissolving.")
+    do_dissolve = False
+    if do_dissolve:
+        print("- Finding each nodes connected elements...")
+        t0 = time.time()
+        find_nodes_connected_elements(mesh)
+        print("  - Finished after {:.2f} seconds.".format(time.time() - t0))
 
-    print("- Finding each elements neighbours...")
-    t0 = time.time()
-    set_element_neighbour_ids(mesh)
-    print("  - Finished after {:.2f} seconds.".format(time.time() - t0))
+        print("- Finding each elements neighbours...")
+        t0 = time.time()
+        set_element_neighbour_ids(mesh)
+        print("  - Finished after {:.2f} seconds.".format(time.time() - t0))
 
-    print("- Import finished after {:.2f} seconds.".format(time.time() - 
-                                                           t0_import))
+    print("Import finished after {:.2f} seconds.".format(time.time() -
+                                                         t0_import))
     return mesh
 
 
 def import_2dm_mesh(path_mesh):
-    nodes, elements = [], []
+    nodes, elements, elements_quad = [], [], []
     for line in open(path_mesh, encoding="latin1"):
         if line.startswith("ND "):
             nodes.append([float(x) for x in line.split()[2:]])
@@ -54,10 +57,19 @@ def import_2dm_mesh(path_mesh):
             elements.append([int(nid)-1 for nid in line.split()[2:5]])
         elif line.startswith("E4Q "):
             nids = [int(nid)-1 for nid in line.split()[2:6]]
+            elements_quad.append(nids)
+    nodes = np.array(nodes)
+
+    print("- Splitting quads (connecting nodes with smallest dz)...")
+    for nids in elements_quad:
+        qnodes = nodes[nids, :]
+        if abs(qnodes[0, 2] - qnodes[2, 2]) < abs(qnodes[1, 2] - qnodes[3, 2]):
             elements.append([nids[0], nids[1], nids[2]])
             elements.append([nids[2], nids[3], nids[0]])
+        else:
+            elements.append([nids[0], nids[1], nids[3]])
+            elements.append([nids[1], nids[2], nids[3]])
 
-    nodes = np.array(nodes)
     elements = np.array(elements)
 
     return nodes, elements
@@ -115,11 +127,13 @@ def write_element_contour_polygons(contour_polygons_dict, path_cpolys):
         for i, cpoly in enumerate(contour_polygons):
             if len(cpoly) == 0:
                 continue
-            if len(cpoly) > 1:
+            elif len(cpoly) > 2:
                 pnts = [(x, y, z) for x, y, z in cpoly]
                 pnts.append(pnts[0])
                 w.polyz([pnts])
                 w.record(i, c_pair)
             else:
-                print("Contour Polygon {} of element {} only has {} points".format(c_pair, i, len(cpoly)))
+                print("Contour Polygon {} of element {} ".format(c_pair, i) +
+                      "only has {} points".format(len(cpoly)))
+
     w.close()

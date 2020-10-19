@@ -23,7 +23,7 @@ def main():
 
     # Writing undissolved contour polygons to shapefile
     path_shp = os.path.join(os.path.dirname(path_dict['mesh']),
-                            "undissolved_contour_polygons.shp")
+                            "undiss_contour_polygons.shp")
     write_element_contour_polygons(element_contour_polygon_dict,
                                    path_shp)
 
