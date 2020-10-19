@@ -15,8 +15,6 @@ def main():
     # Reading mesh and data
     mesh = import_mesh_data(path_dict['mesh'], path_dict['dat'])
 
-    print(np.max(mesh.nodes, axis=0))
-
     # Creating contours for each element
     element_contour_polygon_dict = create_contour_polygons(mesh, params,
                                                            debug=False)

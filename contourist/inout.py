@@ -17,16 +17,16 @@ def import_mesh_data(path_mesh, path_dat):
     print("  {}".format(path_mesh))
     # TODO: Check if mesh is renumbered
     if path_mesh.endswith(".2dm"):
-        nodes, elements = import_2dm_mesh(path_mesh)
+        nodes, elements = import_2dm_mesh(path_mesh, path_dat)
     else:
         sys.exit("Mesh format not supported.")
     print("  - Finished after {:.2f} seconds.".format(time.time() - t0))
 
-    print("- Reading dat...")
-    t0 = time.time()
-    print("  {}".format(path_dat))
-    import_2dm_dat(path_dat, nodes)
-    print("  - Finished after {:.2f} seconds.".format(time.time() - t0))
+    # print("- Reading dat...")
+    # t0 = time.time()
+    # print("  {}".format(path_dat))
+    # import_2dm_dat(path_dat, nodes)
+    # print("  - Finished after {:.2f} seconds.".format(time.time() - t0))
 
     mesh = Mesh(nodes, elements)
 
@@ -48,7 +48,7 @@ def import_mesh_data(path_mesh, path_dat):
     return mesh
 
 
-def import_2dm_mesh(path_mesh):
+def import_2dm_mesh(path_mesh, path_dat):
     nodes, elements, elements_quad = [], [], []
     for line in open(path_mesh, encoding="latin1"):
         if line.startswith("ND "):
@@ -60,15 +60,32 @@ def import_2dm_mesh(path_mesh):
             elements_quad.append(nids)
     nodes = np.array(nodes)
 
-    print("- Splitting quads (connecting nodes with smallest dz)...")
-    for nids in elements_quad:
-        qnodes = nodes[nids, :]
-        if abs(qnodes[0, 2] - qnodes[2, 2]) < abs(qnodes[1, 2] - qnodes[3, 2]):
-            elements.append([nids[0], nids[1], nids[2]])
-            elements.append([nids[2], nids[3], nids[0]])
-        else:
-            elements.append([nids[0], nids[1], nids[3]])
-            elements.append([nids[1], nids[2], nids[3]])
+    import_2dm_dat(path_dat, nodes)
+
+    split_method = "split_into_four"
+    if split_method == "split_with_min_dz":
+        print("- Splitting quads (connecting nodes with smallest dz)...")
+        for nids in elements_quad:
+            qnodes = nodes[nids, :]
+            if abs(qnodes[0, 2] - qnodes[2, 2]) < abs(qnodes[1, 2] - qnodes[3, 2]):
+                elements.append([nids[0], nids[1], nids[2]])
+                elements.append([nids[2], nids[3], nids[0]])
+            else:
+                elements.append([nids[0], nids[1], nids[3]])
+                elements.append([nids[1], nids[2], nids[3]])
+    elif split_method == "split_into_four":
+        print("- Splitting each quad into four triangles...")
+        new_nid = nodes.shape[0]
+        new_nodes = [] 
+        for nids in elements_quad:
+            qnodes = nodes[nids, :]
+            new_nodes.append(np.mean(qnodes, axis=0))
+            elements.append([nids[0], nids[1], int(new_nid)])
+            elements.append([nids[1], nids[2], int(new_nid)])
+            elements.append([nids[2], nids[3], int(new_nid)])
+            elements.append([nids[3], nids[0], int(new_nid)])
+            new_nid += 1
+        nodes = np.vstack((nodes, np.array(new_nodes)))
 
     elements = np.array(elements)
 
