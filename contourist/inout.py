@@ -18,6 +18,8 @@ def import_mesh_data(path_mesh, path_dat):
     # TODO: Check if mesh is renumbered
     if path_mesh.endswith(".2dm"):
         nodes, elements = import_2dm_mesh(path_mesh, path_dat)
+    elif path_mesh.endswith(".dat"):
+        nodes, elements = import_uro_mesh(path_mesh, path_dat)
     else:
         sys.exit("Mesh format not supported.")
     print("  - Finished after {:.2f} seconds.".format(time.time() - t0))
@@ -101,6 +103,34 @@ def import_2dm_dat(path_dat, nodes):
     nodes[:, 2] = data
 
 
+def import_uro_mesh(path_mesh, path_dat):
+    # print("- Lese UnRunOff-Mesh...")
+    lines = [line for line in open(path_mesh).readlines()
+             if not line.startswith('C')]
+
+    n_bndnodes = int(lines[0])
+    n_nodes = int(lines[1])
+    n_elmts = int(lines[2 + n_nodes + n_bndnodes])
+
+    i_nodes = [2, 2 + n_nodes + n_bndnodes]
+    i_elmts = [2 + n_nodes + n_bndnodes + 1, 2 + n_nodes + n_bndnodes + 1 +
+               n_elmts]
+
+    def line_to_node(line):
+        return [float(x) for x in line.split()[1:]]
+
+    def line_to_elmt(line):
+        return [int(nid) for nid in line.split()[:3]]
+
+    nodes = [line_to_node(line) for line in lines[i_nodes[0]:i_nodes[1]]]
+    nodes_array = np.array(nodes)
+
+    elements = [line_to_elmt(line) for line in lines[i_elmts[0]:i_elmts[1]]]
+    import_2dm_dat(path_dat, nodes_array)
+
+    return nodes_array, np.array(elements)
+
+
 def find_nodes_connected_elements(mesh):
     mesh.nodes_conn_element_ids = [[] for x in range(mesh.nodes.shape[0])]
 
@@ -140,7 +170,7 @@ def write_element_contour_polygons(contour_polygons_dict, path_cpolys):
     w.field("ID", 'N')
     w.field("Contour", 'C')
 
-    for c_pair, contour_polygons in contour_polygons_dict.items():
+    for c_pair, contour_polygons in tqdm(contour_polygons_dict.items()):
         for i, cpoly in enumerate(contour_polygons):
             if len(cpoly) == 0:
                 continue

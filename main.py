@@ -20,8 +20,7 @@ def main():
                                                            debug=False)
 
     # Writing undissolved contour polygons to shapefile
-    path_shp = os.path.join(os.path.dirname(path_dict['mesh']),
-                            "undiss_contour_polygons.shp")
+    path_shp = os.path.join(os.path.dirname(path_dict['mesh']), "{}_contour_undissolved.shp".format(os.path.basename(path_dict['dat'])))
     write_element_contour_polygons(element_contour_polygon_dict,
                                    path_shp)
 
@@ -35,7 +34,7 @@ def parse_args():
 
     ap.add_argument("--mesh", metavar='netz.2dm', type=str,
                     required=True,
-                    help="Name oder Pfad des Meshs (.2dm)")
+                    help="Name oder Pfad des Meshs (Hydro_AS, UnRunOff)")
     ap.add_argument("--dat", metavar='DEPTH.dat', type=str,
                     required=False, default=None,
                     help="Name oder Pfad der skalaren Ergebnisdatei (.dat)")
