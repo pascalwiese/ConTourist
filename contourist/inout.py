@@ -64,30 +64,31 @@ def import_2dm_mesh(path_mesh, path_dat):
 
     import_2dm_dat(path_dat, nodes)
 
-    split_method = "split_into_four"
-    if split_method == "split_with_min_dz":
-        print("- Splitting quads (connecting nodes with smallest dz)...")
-        for nids in elements_quad:
-            qnodes = nodes[nids, :]
-            if abs(qnodes[0, 2] - qnodes[2, 2]) < abs(qnodes[1, 2] - qnodes[3, 2]):
-                elements.append([nids[0], nids[1], nids[2]])
-                elements.append([nids[2], nids[3], nids[0]])
-            else:
-                elements.append([nids[0], nids[1], nids[3]])
-                elements.append([nids[1], nids[2], nids[3]])
-    elif split_method == "split_into_four":
-        print("- Splitting each quad into four triangles...")
-        new_nid = nodes.shape[0]
-        new_nodes = [] 
-        for nids in elements_quad:
-            qnodes = nodes[nids, :]
-            new_nodes.append(np.mean(qnodes, axis=0))
-            elements.append([nids[0], nids[1], int(new_nid)])
-            elements.append([nids[1], nids[2], int(new_nid)])
-            elements.append([nids[2], nids[3], int(new_nid)])
-            elements.append([nids[3], nids[0], int(new_nid)])
-            new_nid += 1
-        nodes = np.vstack((nodes, np.array(new_nodes)))
+    if len(elements_quad) > 0:
+        split_method = "split_into_four"
+        if split_method == "split_with_min_dz":
+            print("- Splitting quads (connecting nodes with smallest dz)...")
+            for nids in elements_quad:
+                qnodes = nodes[nids, :]
+                if abs(qnodes[0, 2] - qnodes[2, 2]) < abs(qnodes[1, 2] - qnodes[3, 2]):
+                    elements.append([nids[0], nids[1], nids[2]])
+                    elements.append([nids[2], nids[3], nids[0]])
+                else:
+                    elements.append([nids[0], nids[1], nids[3]])
+                    elements.append([nids[1], nids[2], nids[3]])
+        elif split_method == "split_into_four":
+            print("- Splitting each quad into four triangles...")
+            new_nid = nodes.shape[0]
+            new_nodes = [] 
+            for nids in elements_quad:
+                qnodes = nodes[nids, :]
+                new_nodes.append(np.mean(qnodes, axis=0))
+                elements.append([nids[0], nids[1], int(new_nid)])
+                elements.append([nids[1], nids[2], int(new_nid)])
+                elements.append([nids[2], nids[3], int(new_nid)])
+                elements.append([nids[3], nids[0], int(new_nid)])
+                new_nid += 1
+            nodes = np.vstack((nodes, np.array(new_nodes)))
 
     elements = np.array(elements)
 
@@ -95,6 +96,20 @@ def import_2dm_mesh(path_mesh, path_dat):
 
 
 def import_2dm_dat(path_dat, nodes):
+    # TODO: Check which dat format it is
+    lines = open(path_dat, encoding="latin1").readlines()
+
+    data = []
+    for line in lines:
+        try:
+            data.append(float(line))
+        except:
+            print(f"Skipping line: {line.strip()}")
+    data = np.array(data)
+    nodes[:, 2] = data
+
+
+def import_2dm_dat_old(path_dat, nodes):
     # TODO: Check which dat format it is
     lines = open(path_dat, encoding="latin1").readlines()
 
