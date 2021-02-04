@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 def point_on_line_by_z(pnt1: np.ndarray, pnt2: np.ndarray, z: float)\
