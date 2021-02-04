@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm
 
 from .geometry import point_on_line_by_z
-from .plotting import plot_single_element_contour
+# from .plotting import plot_single_element_contour
 
 
 def create_contour_polygons(mesh, params, debug=False):
@@ -79,12 +79,13 @@ def create_contour_polygons(mesh, params, debug=False):
 
                 if debug:
                     print("\nElement index: {}".format(eid))
-                    for pnt in contour_polygons[eid]:
-                        print(pnt)
-                    plot_single_element_contour(nodes,
-                                                contour_polygons[eid])
+                    # for pnt in contour_polygons[eid]:
+                    #     print(pnt)
+                    # plot_single_element_contour(nodes,
+                    #                             contour_polygons[eid])
 
         # Adding all contour polygons to the dictionary
         element_contour_polygons["{}-{}".format(c_lo, c_hi)] = contour_polygons
+        print("  -> {} contour polygons found within {} and {}".format(len(contour_polygons), c_lo, c_hi))
 
     return element_contour_polygons
