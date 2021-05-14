@@ -4,9 +4,10 @@ from sys import path
 
 import numpy as np
 
-from contourist.inout import import_mesh_data
+from contourist.inout import import_mesh_data, set_element_neighbour_ids
 from contourist.inout import write_element_contour_polygons
 from contourist.contouring import create_contour_polygons
+from contourist.dissolving import dissolve_all_contour_polygons
 
 
 def main():
@@ -15,14 +16,18 @@ def main():
 
     # Reading mesh and data
     mesh = import_mesh_data(path_dict['mesh'], path_dict['dat'])
-
+    
     # Creating contours for each element
     element_contour_polygon_dict = create_contour_polygons(mesh, params,
                                                            debug=False)
 
+    contour_polygons = dissolve_all_contour_polygons(element_contour_polygon_dict, mesh, params, do_plot=False)
+
     # Writing undissolved contour polygons to shapefile
     write_element_contour_polygons(element_contour_polygon_dict,
                                    path_dict['out'])
+    
+    
 
 
 def parse_args():

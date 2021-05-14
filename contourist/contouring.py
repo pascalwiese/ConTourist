@@ -89,3 +89,4 @@ def create_contour_polygons(mesh, params, debug=False):
         print("  -> {} contour polygons found within {} and {}".format(len(contour_polygons), c_lo, c_hi))
 
     return element_contour_polygons
+

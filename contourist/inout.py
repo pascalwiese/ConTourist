@@ -32,8 +32,8 @@ def import_mesh_data(path_mesh, path_dat):
 
     mesh = Mesh(nodes, elements)
 
-    print("- SKIPPING steps, which are necessary for dissolving.")
-    do_dissolve = False
+    # print("- SKIPPING steps, which are necessary for dissolving.")
+    do_dissolve = True
     if do_dissolve:
         print("- Finding each nodes connected elements...")
         t0 = time.time()
@@ -176,6 +176,9 @@ def set_element_neighbour_ids(mesh):
                 continue
             if len(set(nids) & set(mesh.elements[neid])) == 2:
                 mesh.element_neigh_ids[eid].append(neid)
+    for eid in range(len(mesh.element_neigh_ids)):
+        mesh.element_neigh_ids[eid] = list(set(mesh.element_neigh_ids[eid]))
+
 
 
 def write_element_contour_polygons(contour_polygons_dict, path_cpolys):
