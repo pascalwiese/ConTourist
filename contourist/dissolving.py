@@ -24,6 +24,7 @@ def dissolve_all_contour_polygons(element_contour_polygons_dict, mesh, params, d
             if len(element_contour_polygons[eid]) == 0:
                 is_elmt_dissolved[eid] = True
 
+        all_dissolve_orders = []
         for eid in range(len(is_elmt_dissolved)):
             # Skip if element was dissolved
             if is_elmt_dissolved[eid]:
@@ -34,21 +35,46 @@ def dissolve_all_contour_polygons(element_contour_polygons_dict, mesh, params, d
                 is_elmt_dissolved[eid] = True
                 continue
             
-            diss_polygon = [element_to_point(mesh.elements[eid], mesh.nodes)]
-            polygon = []
-            is_elmt_dissolved[0] = True
-            polygon = recursive_dissolving(polygon, eid, element_contour_polygons, is_elmt_dissolved, c_key, mesh, do_plot=do_plot)
+            is_elmt_dissolved[eid] = True
 
-            debug_points.append(polygon)
-            # debug_diss_points.append(diss_polygon)
-            # fout = open("./testdata/debug2.txt", "w")
-            # fout.write("id x y\n")
-            # for i, pnt in enumerate(polygon):
-            #     fout.write("{} {} {}\n".format(i, pnt[0], pnt[1]))
-            # print(len(polygon))
-            # a = input("Input needed.")
-    write_debug_points_to_shape(debug_points, "debug")
-    # write_debug_points_to_shape(debug_diss_points, "diss")
+            print("\n", eid)
+            neids = [neid for neid in mesh.element_neigh_ids[eid] 
+                     if len(element_contour_polygons[neid]) > 0 and 
+                     not is_elmt_dissolved[neid]]
+
+            dissolve_order = [eid]
+            dissolve_order = get_dissolve_order_recursive(dissolve_order, is_elmt_dissolved, eid, element_contour_polygons, mesh)
+
+            print(dissolve_order)
+            all_dissolve_orders.append(dissolve_order)
+
+        with open("./testdata/diss_order_debug_{}.txt".format(c_key), "w") as fout:
+            fout.write("id ord eid x y z\n")
+            for i, dissolve_order in enumerate(all_dissolve_orders):
+                for ord, eid in enumerate(dissolve_order):
+                    x, y, z = element_to_point(mesh.elements[eid], mesh.nodes)
+                    fout.write(f"{i} {ord} {eid} {x} {y} {z}\n")
+                      
+
+
+def get_dissolve_order_recursive(dissolve_order, is_elmt_dissolved, eid, element_contour_polygons, mesh):
+    neids = [neid for neid in mesh.element_neigh_ids[eid] 
+             if len(element_contour_polygons[neid]) > 0 and 
+             not is_elmt_dissolved[neid]]
+    
+    dissolve_order += neids
+    for neid in neids:
+        is_elmt_dissolved[neid] = True
+        get_dissolve_order_recursive(dissolve_order, is_elmt_dissolved, neid, element_contour_polygons, mesh)
+
+    return dissolve_order
+    
+
+def dissolve_with_neighbours(polygon, eid, neids, element_contour_polygons, c_key, mesh, do_plot=False):
+    print("n_neids: {}".format(len(neids)))
+    if len(neids) == 0:
+        print("-- finished")
+        return polygon
 
 
 def recursive_dissolving(polygon, eid, element_contour_polygons, is_elmt_dissolved, c_key, mesh, do_plot=False):
