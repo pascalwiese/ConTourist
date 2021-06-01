@@ -48,7 +48,7 @@ def dissolve_all_contour_polygons(element_contour_polygons_dict, mesh, params, d
             print(dissolve_order)
             all_dissolve_orders.append(dissolve_order)
 
-        with open("./testdata/diss_order_debug_{}.txt".format(c_key), "w") as fout:
+        with open("./testdata/diss_order_{}.txt".format(c_key), "w") as fout:
             fout.write("id ord eid x y z\n")
             for i, dissolve_order in enumerate(all_dissolve_orders):
                 for ord, eid in enumerate(dissolve_order):
@@ -58,13 +58,19 @@ def dissolve_all_contour_polygons(element_contour_polygons_dict, mesh, params, d
 
 
 def get_dissolve_order_recursive(dissolve_order, is_elmt_dissolved, eid, element_contour_polygons, mesh):
+    is_elmt_dissolved[eid] = True
     neids = [neid for neid in mesh.element_neigh_ids[eid] 
              if len(element_contour_polygons[neid]) > 0 and 
              not is_elmt_dissolved[neid]]
     
     dissolve_order += neids
+    
+    # print("- {} - {} - {}".format(eid, neids, dissolve_order))
+    # a = input()
     for neid in neids:
         is_elmt_dissolved[neid] = True
+        
+    for neid in neids:    
         get_dissolve_order_recursive(dissolve_order, is_elmt_dissolved, neid, element_contour_polygons, mesh)
 
     return dissolve_order
