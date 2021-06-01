@@ -2,10 +2,11 @@ import numpy as np
 # import matplotlib.pyplot as plt
 
 
-def point_on_line_by_z(pnt1: np.ndarray, pnt2: np.ndarray, z: float)\
-        -> np.ndarray:
+def point_on_line_by_z(pnt1, pnt2, z):
     ratio = (z - pnt1[2]) / (pnt2[2] - pnt1[2])
-    pnt = pnt1 + (pnt2-pnt1)*ratio
+    pnt = [pnt1[0] + (pnt2[0] - pnt1[0])*ratio,
+           pnt1[1] + (pnt2[1] - pnt1[1])*ratio,
+           z]
 
     # plt.plot([pnt1[0], pnt2[0]], [pnt1[1], pnt2[1]], 'bo')
     # plt.scatter([pnt[0]], [pnt[1]], color='red')

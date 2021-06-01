@@ -28,7 +28,7 @@ def create_contour_polygons(mesh, params, debug=False):
             # All z values are within the contour bounds
             elif np.sum(nodes[:, 2] >= c_lo) == 3 and \
                     np.sum(nodes[:, 2] <= c_hi) == 3:
-                contour_polygons[eid] = nodes
+                contour_polygons[eid] = [[n[0], n[1], n[2]] for n in nodes]
             # Element must have a contour polygon
             else:
                 for nd1, nd2 in zip(nodes, [nodes[1], nodes[2], nodes[0]]):
@@ -39,8 +39,8 @@ def create_contour_polygons(mesh, params, debug=False):
                         continue
 
                     # Checking which nodes' z value is higher
-                    nd_lo = nd1
-                    nd_hi = nd2
+                    nd_lo = [nd1[0], nd1[1], nd1[2]]
+                    nd_hi = [nd2[0], nd2[1], nd2[2]]
                     is_reverse = False
                     if nd_lo[2] > nd_hi[2]:
                         nd_lo, nd_hi = nd_hi, nd_lo
@@ -83,6 +83,21 @@ def create_contour_polygons(mesh, params, debug=False):
                     #     print(pnt)
                     # plot_single_element_contour(nodes,
                     #                             contour_polygons[eid])
+
+        # Deleting dublicate points
+        for eid, points in enumerate(contour_polygons):
+            if len(points) == 0:
+                continue
+
+            points_cleaned = [points[0]]
+            for pnt in points[1:]:
+                if pnt[0] != points_cleaned[-1][0] and pnt[1] != points_cleaned[-1][1]:
+                    points_cleaned.append(pnt)
+            if points_cleaned[0][0] == points_cleaned[-1][0] and points_cleaned[0][1] == points_cleaned[-1][1]:
+                points_cleaned = points_cleaned[1:]
+            contour_polygons[eid] = points_cleaned
+
+
 
         # Adding all contour polygons to the dictionary
         element_contour_polygons["{}-{}".format(c_lo, c_hi)] = contour_polygons

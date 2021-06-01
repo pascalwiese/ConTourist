@@ -15,7 +15,7 @@ def dissolve_all_contour_polygons(element_contour_polygons_dict, mesh, params, d
     dissolve_polygons_dict = {}
     for c_lo, c_hi in zip(params['contours'][:-1], params['contours'][1:]):
         c_key = "{}-{}".format(c_lo, c_hi)
-        print("- Starting with contour {}".format(c_key))
+        print("Starting with contour {}".format(c_key))
         dissolve_polygons_dict[c_key] = []
         element_contour_polygons = element_contour_polygons_dict[c_key]
         is_elmt_dissolved = [False for i in range(len(mesh.elements))]
@@ -24,6 +24,7 @@ def dissolve_all_contour_polygons(element_contour_polygons_dict, mesh, params, d
             if len(element_contour_polygons[eid]) == 0:
                 is_elmt_dissolved[eid] = True
 
+        print("- Calculating the dissolve order...")
         all_dissolve_orders = []
         for eid in range(len(is_elmt_dissolved)):
             # Skip if element was dissolved
@@ -37,16 +38,16 @@ def dissolve_all_contour_polygons(element_contour_polygons_dict, mesh, params, d
             
             is_elmt_dissolved[eid] = True
 
-            print("\n", eid)
-            neids = [neid for neid in mesh.element_neigh_ids[eid] 
-                     if len(element_contour_polygons[neid]) > 0 and 
-                     not is_elmt_dissolved[neid]]
-
             dissolve_order = [eid]
             dissolve_order = get_dissolve_order_recursive(dissolve_order, is_elmt_dissolved, eid, element_contour_polygons, mesh)
 
-            print(dissolve_order)
             all_dissolve_orders.append(dissolve_order)
+        print("  -> {} areas found.".format(len(all_dissolve_orders)))
+
+        print("- Dissolving all areas to polygons...")
+        for dissolve_order in all_dissolve_orders:
+            polygon = dissolve_polygons(element_contour_polygons, dissolve_order, c_key)
+        
 
         with open("./testdata/diss_order_{}.txt".format(c_key), "w") as fout:
             fout.write("id ord eid x y z\n")
@@ -56,17 +57,58 @@ def dissolve_all_contour_polygons(element_contour_polygons_dict, mesh, params, d
                     fout.write(f"{i} {ord} {eid} {x} {y} {z}\n")
                       
 
+def dissolve_polygons(polygons, dissolve_order, c_key):
+    polygon = polygons[dissolve_order[0]]
+
+    for eid in dissolve_order[1:]:
+        # print(polygons[eid])
+        polygon = dissolve(polygon, polygons[eid])
+
+    return polygon 
+
+
+# Dissolving two polygons that share at least two vertices
+def dissolve(poly1, poly2):
+    # if is_polygon_ccw(poly1) != is_polygon_ccw(poly2):
+    #     poly2 = poly2[::-1]
+    
+    print("poly1:", poly1)
+    print("poly2:", poly2)
+    poly1_in_poly2 = [0 for i in range(len(poly1))]
+    poly2_in_poly1 = [0 for i in range(len(poly2))]
+
+    for i2, pnt2 in enumerate(poly2):
+        # print(pnt2)
+        for i1, pnt1 in enumerate(poly1):
+            # print(pnt1)
+            if pnt2[0] == pnt1[0] and pnt2[1] == pnt1[1]:
+                poly1_in_poly2[i1] = 1
+                poly2_in_poly1[i2] = 1
+    print("poly1:", poly1_in_poly2)
+    print("poly2:", poly2_in_poly1)
+    print()
+
+    poly = [poly1]
+    return poly
+
+
+# This is only robust for convex polygons. The contour polygons for each element are convex though
+def is_polygon_ccw(poly):
+    a, b, c = poly[:3]
+    det = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])
+    if det > 0:
+        return True
+    else:
+        return False
+    
 
 def get_dissolve_order_recursive(dissolve_order, is_elmt_dissolved, eid, element_contour_polygons, mesh):
     is_elmt_dissolved[eid] = True
     neids = [neid for neid in mesh.element_neigh_ids[eid] 
              if len(element_contour_polygons[neid]) > 0 and 
              not is_elmt_dissolved[neid]]
-    
     dissolve_order += neids
-    
-    # print("- {} - {} - {}".format(eid, neids, dissolve_order))
-    # a = input()
+
     for neid in neids:
         is_elmt_dissolved[neid] = True
         
@@ -83,58 +125,6 @@ def dissolve_with_neighbours(polygon, eid, neids, element_contour_polygons, c_ke
         return polygon
 
 
-def recursive_dissolving(polygon, eid, element_contour_polygons, is_elmt_dissolved, c_key, mesh, do_plot=False):
-    is_elmt_dissolved[eid] = True
-    polygon.append(element_to_point(mesh.elements[eid], mesh.nodes))
-
-    dissolve_neighbour_eids = [neid for neid in mesh.element_neigh_ids[eid] 
-                               if len(element_contour_polygons[neid]) > 0 and 
-                               not is_elmt_dissolved[neid]]
-
-    # print("\nElement: ", eid)
-    # print("Neighbours: ", mesh.element_neigh_ids[eid])
-    # print("Dissolve Neighbours: ", dissolve_neighbour_eids)
-    
-    if False:
-        for pnt in polygon:
-            plt.scatter(pnt[0], pnt[1], color="yellow", s=120)
-
-        xs, ys = element_to_lines(mesh.elements[eid], mesh.nodes)
-        plt.plot(xs, ys, color="black")
-        centroid = element_to_point(mesh.elements[eid], mesh.nodes)
-        plt.scatter(centroid[0], centroid[1], color="red")
-        # plt.text(str(eid+1), centroid[0], centroid[1])
-
-        for neid in mesh.element_neigh_ids[eid]:
-            centroid = element_to_point(mesh.elements[neid], mesh.nodes)
-            plt.scatter(centroid[0], centroid[1], color="black", s=10)
-            xs, ys = element_to_lines(mesh.elements[neid], mesh.nodes)
-            plt.plot(xs, ys, color="black")
-            # plt.text(str(eid+1), centroid[0], centroid[1])
-
-        for neid in dissolve_neighbour_eids:
-            centroid = element_to_point(mesh.elements[neid], mesh.nodes)
-            plt.scatter(centroid[0], centroid[1], color="blue")
-
-        plt.axis("equal")
-        plt.show()
-
-
-    # If no more neighbours can be dissolved
-    if len(dissolve_neighbour_eids) == 0:
-        return polygon
-
-    # First do dissolving
-    for neid in dissolve_neighbour_eids:
-        # diss_polygon.append(element_to_point(mesh.elements[neid], mesh.nodes))
-        # polygon.append(element_to_point(mesh.elements[neid], mesh.nodes))
-        is_elmt_dissolved[neid] = True
-
-    # Then dissolve the neighbours neighbours
-    for neid in dissolve_neighbour_eids:
-        polygon = recursive_dissolving(polygon, neid, element_contour_polygons, is_elmt_dissolved, c_key, mesh, do_plot=True)
-    
-    return polygon
 
 
 def element_to_point(element, nodes):
