@@ -2,6 +2,9 @@ import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
+from matplotlib.collections import PatchCollection
+from numpy.lib.function_base import insert
 import shapefile
 
 sys.setrecursionlimit(10000)
@@ -46,7 +49,7 @@ def dissolve_all_contour_polygons(element_contour_polygons_dict, mesh, params, d
 
         print("- Dissolving all areas to polygons...")
         for dissolve_order in all_dissolve_orders:
-            polygon = dissolve_polygons(element_contour_polygons, dissolve_order, c_key)
+            polygon = dissolve_polygons(element_contour_polygons, dissolve_order, c_key, do_plot=do_plot)
         
 
         with open("./testdata/diss_order_{}.txt".format(c_key), "w") as fout:
@@ -57,38 +60,77 @@ def dissolve_all_contour_polygons(element_contour_polygons_dict, mesh, params, d
                     fout.write(f"{i} {ord} {eid} {x} {y} {z}\n")
                       
 
-def dissolve_polygons(polygons, dissolve_order, c_key):
+def dissolve_polygons(polygons, dissolve_order, c_key, do_plot=False):
     polygon = polygons[dissolve_order[0]]
 
     for eid in dissolve_order[1:]:
         # print(polygons[eid])
-        polygon = dissolve(polygon, polygons[eid])
+        polygon = dissolve(polygon, polygons[eid], do_plot=do_plot)
 
     return polygon 
 
 
 # Dissolving two polygons that share at least two vertices
-def dissolve(poly1, poly2):
+def dissolve(poly1, poly2, do_plot=False):
     # if is_polygon_ccw(poly1) != is_polygon_ccw(poly2):
     #     poly2 = poly2[::-1]
     
     print("poly1:", poly1)
     print("poly2:", poly2)
-    poly1_in_poly2 = [0 for i in range(len(poly1))]
-    poly2_in_poly1 = [0 for i in range(len(poly2))]
+    poly1_in_poly2 = [None for i in range(len(poly1))]
+    poly2_in_poly1 = [None for i in range(len(poly2))]
 
     for i2, pnt2 in enumerate(poly2):
         # print(pnt2)
         for i1, pnt1 in enumerate(poly1):
             # print(pnt1)
             if pnt2[0] == pnt1[0] and pnt2[1] == pnt1[1]:
-                poly1_in_poly2[i1] = 1
-                poly2_in_poly1[i2] = 1
-    print("poly1:", poly1_in_poly2)
-    print("poly2:", poly2_in_poly1)
+                poly1_in_poly2[i1] = i2
+                poly2_in_poly1[i2] = i1
+    print("poly1_in_poly2:", poly1_in_poly2)
+    print("poly2_in_poly1:", poly2_in_poly1)
+    insert_idx = 0
+    for i1, i2 in zip(poly1_in_poly2[:-1], poly1_in_poly2[1:]):
+        insert_idx += 1
+        if i1 is not None and i2 is not None:
+            break
+
+    print("insert_idx:", insert_idx)
     print()
 
-    poly = [poly1]
+    if True:
+        fig, ax = plt.subplots()
+        patches = []
+        np_poly = np.array([[pnt[0], pnt[1]] for pnt in poly1])
+        ax.scatter(np_poly[:, 0], np_poly[:, 1])
+        patches.append(Polygon(np_poly, False))
+
+        np_poly = np.array([[pnt[0], pnt[1]] for pnt in poly2])
+        ax.scatter(np_poly[:, 0], np_poly[:, 1])
+        patches.append(Polygon(np_poly, False))
+
+        p = PatchCollection(patches, alpha=0.5)
+        colors = 100 * np.random.rand(len(patches))
+        p.set_array(colors)
+        ax.add_collection(p)
+        fig.colorbar(p, ax=ax)
+        ax.axis("equal")
+        plt.show()
+
+    # dissolve
+    if None in poly2_in_poly1:
+        poly = poly1
+        poly2 = [pnt for pnt, inside in zip(poly2, poly2_in_poly1) if inside is None]
+        poly = poly[:insert_idx] + poly2 + poly[insert_idx:]
+    else:  # all points already appear in poly
+        pt1 = poly1[:min(poly2_in_poly1)+1]
+        pt2 = poly1[max(poly2_in_poly1):]
+        # print("pt1:", pt1)
+        # print("pt2:", pt2)
+        poly = pt1 + pt2
+
+
+
     return poly
 
 
